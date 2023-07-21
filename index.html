@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Memory</title>
+    <style>
+      body {
+        background-color: black;
+        color: white;
+        font-family: monospace;
+        text-align: center;
+      }
+      .hidden {
+        display: none;
+      }
+
+      #tokens {
+        width: 400px;
+        height: 300px;
+        margin: auto;
+      }
+
+      #tokens img {
+        width: 100px;
+        height: 100px;
+      }
+
+
+    </style>
+  </head>
+  <body>
+
+    <h1>Memory Matching Madness!</h1>
+    <audio id="correctSound">
+      <source src="correct.wav" type="audio/wav">
+      Your browser does not support the audio element.
+    </audio>
+    <audio id="wrongSound">
+      <source src="wrong.wav" type="audio/wav">
+      Your browser does not support the audio element.
+    </audio>
+    <!-- start screen -->
+    <div id="screen_start" class="">
+      <p>For each Pokemon, find the matching Pokemon. The faster you match them all, the higher your score! Once the game is over, press play again to try and beat your score on the same level or simply reload the page to try a different level.</p>
+      <button class="start" onClick="startGame('easy')">Easy</button>
+      <button class="start" onClick="startGame('medium')">Medium</button>
+      <button class="start" onClick="startGame('difficult')">Difficult</button>
+    </div>
+
+
+    <!-- game play screen -->
+    <div id="screen_game" class="hidden">
+      <div id="timer">0 seconds</div>
+      <div id="tokens">
+
+
+      </div>
+    </div>
+
+
+    <!-- game over screen -->
+    <div id="screen_gameover" class="hidden">
+      <div id="gameoverInfo">Your time was X ... that didn't beat the best time</div>
+      <div id="bestScores">
+
+      </div>
+      <button id="again">Play again</button>
+    </div>
+
+    <script>
+      var levelMap = {
+        "easy": 6,
+        "medium": 10,
+        "difficult": 15
+      }
+      // isolate our DOM queries
+      let screen_start = document.querySelector('#screen_start');
+      let screen_game = document.querySelector('#screen_game');
+      let screen_gameover = document.querySelector('#screen_gameover');
+      let start = document.querySelector('.start');
+      let tokens = document.querySelector('#tokens');
+      let again = document.getElementById('again');
+      let noMoreClicks = false;
+
+
+      let maxTime1 = 10000000;
+      let maxTime2 = 10000000;
+      let maxTime3 = 10000000;
+
+
+
+      //Timer
+      var timerVar = setInterval(countTimer, 1000);
+      var totalSeconds = 0;
+      var seconds = 0;
+      function countTimer() {
+           ++totalSeconds;
+           seconds = totalSeconds;
+           document.getElementById("timer").innerHTML = seconds;
+        }
+
+      // array of all pokemon graphics
+      var assets = ['snorlax.png', 'electrabuzz.png', 'chansey.png', 'oddish.png',
+              'pikachu.png', 'paras.png', 'arcanine.png', 'ponita.png',
+              'venonat.png', 'eggsecute.png', 'machop.png', 'pidgey.png',
+              'psyduck.png', 'tauros.png', 'vulpix.png', 'gloom.png',
+              'krabby.png', 'butterfree.png', 'bulbasaur.png', 'clefairy.png',
+              'koffing.png', 'goldeen.png', 'magikarp.png', 'beedrill.png',
+              'lapras.png', 'meowth.png', 'ekans.png', 'jigglypuff.png',
+              'horsea.png', 'polywog.png', 'sandshrew.png', 'rattata.png',
+              'gengar.png', 'eevee.png', 'bellsprout.png', 'squirtle.png',
+              'seel.png', 'caterpie.png']
+
+      // vars to keep track of which elements were clicked
+      let token1 = false;
+      let token2 = false;
+
+      //var to keep track of number of matches
+      let matches = 0;
+
+      function runGame(level) {
+
+        //get previous times
+        maxTime1 = window.localStorage.getItem('maxTime1_'+level) || maxTime1;
+        maxTime2 = window.localStorage.getItem('maxTime2_'+level) || maxTime2;
+        maxTime3 = window.localStorage.getItem('maxTime3_'+level) || maxTime3;
+
+
+        // make the start screen invisible
+        screen_start.classList.add('hidden');
+
+        // show the playing screen
+        screen_game.classList.remove("hidden");
+
+        // create 12 pokeballs for the user to click on
+
+        // pick 6 random pokemon
+        let pickedPokemon = [];
+
+        for (let i = 0; i < levelMap[level]; i++) {
+          let randomP = parseInt( Math.random() * assets.length );
+          pickedPokemon.push( assets[randomP] );
+          pickedPokemon.push( assets[randomP] );
+          assets.splice( randomP, 1 );
+        }
+        // randomize the pokemon in our array
+        while (pickedPokemon.length > 0) {
+          let tempImage = document.createElement('img');
+          tempImage.src = 'pokeball.png';
+
+          let secretIndex = parseInt( Math.random() * pickedPokemon.length );
+          tempImage.dataset.secret = pickedPokemon[ secretIndex ];
+          tempImage.style.width = levelMap[level] == 15 ? "80px" : "100px";
+          tempImage.style.height = levelMap[level] == 15 ? "80px" : "100px";
+          tempImage.dataset.fixed = "false";
+          pickedPokemon.splice( secretIndex, 1 );
+
+          tokens.appendChild( tempImage );
+
+          tempImage.addEventListener('click', function(event) {
+
+            if(!noMoreClicks) {
+              // if this is the first one clicked, show the image as-is
+              if (token1 == false) {
+                // this becomes token1!
+                let isFixed = event.currentTarget.dataset.fixed;
+                if(isFixed === "false") {
+                  console.log("Correct code is about to be executed");
+                  token1 = event.currentTarget;
+                  // reveal our secret image
+                  event.currentTarget.src = event.currentTarget.dataset.secret;
+                }
+
+              }
+
+              // if this is the SECOND one clicked, we need to evaluate
+              else {
+                let isFixed = event.currentTarget.dataset.fixed;
+                // must be on token2
+                if(isFixed === "false") {
+                  token2 = event.currentTarget;
+                  // reveal our secret image
+                  event.currentTarget.src = event.currentTarget.dataset.secret;
+                  if (token1.dataset.secret == token2.dataset.secret && token1 != token2) {
+                    console.log("MATCH!");
+                    token1.dataset.fixed = "true";
+                    token2.dataset.fixed = "true";
+                    token1 = false;
+                    token2 = false;
+                    matches += 1;
+                    correctSound.play();
+                  }
+                  else {
+
+                    // in 1/2 second reset these tokens
+                    noMoreClicks = true;
+                    setTimeout( reset, 500 );
+                    wrongSound.play();
+                  }
+                }
+
+
+              }
+            }
+
+            //show gameover screen once all have been matched
+            if (matches == levelMap[level]){
+              screen_game.classList.add("hidden");
+              screen_gameover.classList.remove("hidden");
+              //Compare the seconds with each of the highest scores
+              if (seconds <= maxTime1){ //maxtime1 represents highest score
+                //if greater then set maxTime to equal seconds and store in local window
+                maxTime1 = seconds;
+                let name = prompt("Plase enter your name: (highest)");
+                window.localStorage.setItem('maxUser1_'+level, name);
+                window.localStorage.setItem('maxTime1_'+level, seconds);
+              }
+
+              else if (seconds > maxTime1 && seconds <= maxTime2){ //maxtime2 represents 2nd highest score
+                //if greater then set maxTime2 to equal seconds and store in local window
+                maxTime2 = seconds;
+                let name = prompt("Plase enter your name: (2nd Highest)");
+                window.localStorage.setItem('maxUser2_'+level, name);
+                window.localStorage.setItem('maxTime2_'+level, seconds);
+                //else do nothing and the maxTime2 will remain the same
+              }
+
+              else if (seconds <= maxTime3){ //maxtime3 represents 3rd highest score
+                //if greater then set maxTime3 to equal seconds and store in local window
+                maxTime3 = seconds;
+                let name = prompt("Plase enter your name: (3rd Highest)");
+                window.localStorage.setItem('maxUser3_'+level, name);
+                window.localStorage.setItem('maxTime3_'+level, seconds);
+                //else do nothing and the maxTime3 will remain the same
+              }
+
+              console.log(maxTime1, maxTime2, maxTime3);
+
+              document.getElementById("gameoverInfo").innerHTML = `Your score: ${seconds} <br> Best score: ${maxTime1}`;
+              let scoreTable = "<table style='margin: auto'><tr>";
+              let levels = Object.keys(levelMap);
+              for(let j=0; j<levels.length; j++){
+                scoreTable += `<th>${levels[j]}</th>`
+              }
+              scoreTable += `</tr><tr>`;
+              for(let j=0; j<levels.length; j++){
+                scoreTable += `<td style="vertical-align: top">`;
+                scoreTable += `<table>`;
+                for(let i=1; i<=3; i++){
+                  let score = localStorage.getItem(`maxTime${i}_${levels[j]}`);
+                  if(score){
+                    let user = localStorage.getItem(`maxUser${i}_${levels[j]}`);
+                    user = user ? user : "Anonymous";
+                    scoreTable += `<tr><td>${user}</td><td>${score}</td></tr>`;
+                  }
+                }
+                  scoreTable += `</table></td>`;
+              }
+              scoreTable += "</tr></table>";
+              document.getElementById("bestScores").innerHTML = scoreTable;
+              clearInterval(timerVar);
+            }
+
+
+
+          });
+        }
+
+      }
+
+      function startGame(level){
+          window.level = level;
+          runGame(level);
+      }
+      // when the user click start we need to show the game playing screen
+      // start.addEventListener('click', function(e) {
+      //   debugger;
+      //
+      //
+      // });
+
+      again.addEventListener('click', function() {
+        screen_gameover.classList.add("hidden");
+        tokens.innerHTML = "";
+        seconds = 0;
+        totalSeconds = 0;
+        timerVar = setInterval(countTimer, 1000);
+        matches = 0;
+        runGame(window.level);
+
+      });
+
+
+
+
+      function reset() {
+        // hide both tokens
+        token1.src = 'pokeball.png';
+        token2.src = 'pokeball.png';
+
+        // flip the tokens back to false to reset for the next match
+        token1 = false;
+        token2 = false;
+
+        noMoreClicks = false;
+      }
+
+
+    </script>
+
+
+  </body>
+</html>
